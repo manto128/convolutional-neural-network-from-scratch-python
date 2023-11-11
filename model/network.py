@@ -20,17 +20,17 @@ class Net:
         lr = 0.01
         self.layers = []
         self.layers.append(Convolution2D(inputs_channel=1, num_filters=6, kernel_size=5, padding=2, stride=1, learning_rate=lr, name='conv1'))
-        self.layers.append(ReLu())
+        self.layers.append(ReLu6())
+        self.layers.append(Maxpooling2D(pool_size=2, stride=2, name='maxpool1'))
+        self.layers.append(Convolution2D(inputs_channel=6, num_filters=16, kernel_size=5, padding=0, stride=1, learning_rate=lr, name='conv2'))
+        self.layers.append(ReLu6())
         self.layers.append(Maxpooling2D(pool_size=2, stride=2, name='maxpool2'))
-        self.layers.append(Convolution2D(inputs_channel=6, num_filters=16, kernel_size=5, padding=0, stride=1, learning_rate=lr, name='conv3'))
-        self.layers.append(ReLu())
-        self.layers.append(Maxpooling2D(pool_size=2, stride=2, name='maxpool4'))
-        self.layers.append(Convolution2D(inputs_channel=16, num_filters=120, kernel_size=5, padding=0, stride=1, learning_rate=lr, name='conv5'))
-        self.layers.append(ReLu())
+        self.layers.append(Convolution2D(inputs_channel=16, num_filters=120, kernel_size=5, padding=0, stride=1, learning_rate=lr, name='conv3'))
+        self.layers.append(ReLu6())
         self.layers.append(Flatten())
-        self.layers.append(FullyConnected(num_inputs=120, num_outputs=84, learning_rate=lr, name='fc6'))
-        self.layers.append(ReLu())
-        self.layers.append(FullyConnected(num_inputs=84, num_outputs=10, learning_rate=lr, name='fc7'))
+        self.layers.append(FullyConnected(num_inputs=120, num_outputs=84, learning_rate=lr, name='fc1'))
+        self.layers.append(ReLu6())
+        self.layers.append(FullyConnected(num_inputs=84, num_outputs=10, learning_rate=lr, name='fc2'))
         self.layers.append(Softmax())
         self.lay_num = len(self.layers)
 
@@ -115,11 +115,11 @@ class Net:
     def test_with_pretrained_weights(self, data, label, test_size, weights_file):
         with open(weights_file, 'rb') as handle:
             b = pickle.load(handle)
-        self.layers[0].feed(b[0]['conv1.weights'], b[0]['conv1.bias'])
-        self.layers[3].feed(b[3]['conv3.weights'], b[3]['conv3.bias'])
-        self.layers[6].feed(b[6]['conv5.weights'], b[6]['conv5.bias'])
-        self.layers[9].feed(b[9]['fc6.weights'], b[9]['fc6.bias'])
-        self.layers[11].feed(b[11]['fc7.weights'], b[11]['fc7.bias'])
+        self.layers[0].feed(b[4]['conv1.weights'], b[4]['conv1.bias'])
+        self.layers[3].feed(b[3]['conv2.weights'], b[3]['conv2.bias'])
+        self.layers[6].feed(b[2]['conv3.weights'], b[2]['conv3.bias'])
+        self.layers[9].feed(b[1]['fc1.weights'], b[1]['fc1.bias'])
+        self.layers[11].feed(b[0]['fc2.weights'], b[0]['fc2.bias'])
         toolbar_width = 40
         sys.stdout.write("[%s]" % (" " * (toolbar_width-1)))
         sys.stdout.flush()
@@ -127,6 +127,8 @@ class Net:
         step = float(test_size)/float(toolbar_width)
         st = 1
         total_acc = 0
+        # print(label.shape)
+        # print(label)
         for i in range(test_size):
             if i == round(step):
                 step += float(test_size)/float(toolbar_width)
@@ -140,6 +142,7 @@ class Net:
             for l in range(self.lay_num):
                 output = self.layers[l].forward(x)
                 x = output
+
             if np.argmax(output) == np.argmax(y):
                 total_acc += 1
         sys.stdout.write("\n")
@@ -148,17 +151,14 @@ class Net:
     def predict_with_pretrained_weights(self, inputs, weights_file):
         with open(weights_file, 'rb') as handle:
             b = pickle.load(handle)
-        self.layers[0].feed(b[0]['conv1.weights'], b[0]['conv1.bias'])
-        self.layers[3].feed(b[3]['conv3.weights'], b[3]['conv3.bias'])
-        self.layers[6].feed(b[6]['conv5.weights'], b[6]['conv5.bias'])
-        self.layers[9].feed(b[9]['fc6.weights'], b[9]['fc6.bias'])
-        self.layers[11].feed(b[11]['fc7.weights'], b[11]['fc7.bias'])
+        self.layers[0].feed(b[4]['conv1.weights'], b[4]['conv1.bias'])
+        self.layers[3].feed(b[3]['conv2.weights'], b[3]['conv2.bias'])
+        self.layers[6].feed(b[2]['conv3.weights'], b[2]['conv3.bias'])
+        self.layers[9].feed(b[1]['fc1.weights'], b[1]['fc1.bias'])
+        self.layers[11].feed(b[0]['fc2.weights'], b[0]['fc2.bias'])
         for l in range(self.lay_num):
             output = self.layers[l].forward(inputs)
             inputs = output
         digit = np.argmax(output)
         probability = output[0, digit]
         return digit, probability
-
-
-       

@@ -1,4 +1,5 @@
-import numpy as np 
+import numpy as np
+from math import floor
 
 class Convolution2D:
 
@@ -30,18 +31,33 @@ class Convolution2D:
     def forward(self, inputs):
         # input size: (C, W, H)
         # output size: (N, F ,WW, HH)
+        # print(inputs.shape)
+        # print("Convolution2D:")
+        # print(inputs.shape)
         C = inputs.shape[0]
         W = inputs.shape[1]+2*self.p
         H = inputs.shape[2]+2*self.p
         self.inputs = np.zeros((C, W, H))
         for c in range(inputs.shape[0]):
             self.inputs[c,:,:] = self.zero_padding(inputs[c,:,:], self.p)
-        WW = (W - self.K)/self.s + 1
-        HH = (H - self.K)/self.s + 1
+        # if self.name == 'conv1':
+            # print(self.inputs)
+            # print(self.weights.shape, self.bias.shape)
+        self.inputs = self.inputs - 128
+        WW = floor((W - self.K)/self.s + 1)
+        HH = floor((H - self.K)/self.s + 1)
+        # if self.name == 'conv1':
+        #     print('W={}, H={}'.format(W, H))
+        #     print('WW={}, HH={}'.format(WW, HH))
         feature_maps = np.zeros((self.F, WW, HH))
         for f in range(self.F):
-            for w in range(0, WW, self.s):
-                for h in range(0, HH, self.s):
+            for w in range(WW):
+                for h in range(HH):
+                    # if self.name == 'conv1':
+                    #     print('h={}'.format(h))
+                    #     print(self.inputs[:,w:w+self.K,h:h+self.K])
+                    #     print(self.weights[f,:,:,:])
+                    #     print('sum={}'.format(np.sum(self.inputs[:,w:w+self.K,h:h+self.K]*self.weights[f,:,:,:])))
                     feature_maps[f,w,h]=np.sum(self.inputs[:,w:w+self.K,h:h+self.K]*self.weights[f,:,:,:])+self.bias[f]
 
         return feature_maps
@@ -82,14 +98,16 @@ class Maxpooling2D:
         self.name = name
 
     def forward(self, inputs):
+        # print("Maxpooling2D:")
+        # print(inputs.shape)
         self.inputs = inputs
         C, W, H = inputs.shape
-        new_width = (W - self.pool)/self.s + 1
-        new_height = (H - self.pool)/self.s + 1
+        new_width = floor((W - self.pool)/self.s + 1)
+        new_height = floor((H - self.pool)/self.s + 1)
         out = np.zeros((C, new_width, new_height))
         for c in range(C):
-            for w in range(W/self.s):
-                for h in range(H/self.s):
+            for w in range(new_width):
+                for h in range(new_height):
                     out[c, w, h] = np.max(self.inputs[c, w*self.s:w*self.s+self.pool, h*self.s:h*self.s+self.pool])
         return out
 
@@ -102,7 +120,7 @@ class Maxpooling2D:
                 for h in range(0, H, self.pool):
                     st = np.argmax(self.inputs[c,w:w+self.pool,h:h+self.pool])
                     (idx, idy) = np.unravel_index(st, (self.pool, self.pool))
-                    dx[c, w+idx, h+idy] = dy[c, w/self.pool, h/self.pool]
+                    dx[c, w+idx, h+idy] = dy[c, floor(w/self.pool), floor(h/self.pool)]
         return dx
 
     def extract(self):
@@ -117,7 +135,10 @@ class FullyConnected:
         self.name = name
 
     def forward(self, inputs):
+        # print("FullyConnected:")
         self.inputs = inputs
+        print(inputs.shape)
+        print(self.weights.shape, self.bias.T.shape, np.dot(self.inputs, self.weights).shape)
         return np.dot(self.inputs, self.weights) + self.bias.T
 
     def backward(self, dy):
@@ -144,6 +165,8 @@ class Flatten:
     def __init__(self):
         pass
     def forward(self, inputs):
+        # print("Flatten:")
+        # print(inputs.shape)
         self.C, self.W, self.H = inputs.shape
         return inputs.reshape(1, self.C*self.W*self.H)
     def backward(self, dy):
@@ -156,8 +179,30 @@ class ReLu:
         pass
     def forward(self, inputs):
         self.inputs = inputs
+        # print("ReLu:")
+        # print(inputs)
         ret = inputs.copy()
         ret[ret < 0] = 0
+        return ret
+    def backward(self, dy):
+        dx = dy.copy()
+        dx[self.inputs < 0] = 0
+        return dx
+    def extract(self):
+        return
+
+class ReLu6:
+    def __init__(self):
+        pass
+    def forward(self, inputs):
+        self.inputs = inputs
+        # print("ReLu6:")
+        # print(inputs.shape)
+        ret = inputs.copy()
+        # print(ret)
+        ret[ret < 0] = 0
+        ret[ret > 6] = 6
+        # print(ret)
         return ret
     def backward(self, dy):
         dx = dy.copy()
@@ -170,11 +215,13 @@ class Softmax:
     def __init__(self):
         pass
     def forward(self, inputs):
-        exp = np.exp(inputs, dtype=np.float)
+        # print("Softmax:")
+        # print(inputs.shape)
+        exp = np.exp(inputs, dtype=np.float32)
+        # print(exp)
         self.out = exp/np.sum(exp)
         return self.out
     def backward(self, dy):
         return self.out.T - dy.reshape(dy.shape[0],1)
     def extract(self):
         return
-
