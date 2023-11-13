@@ -43,7 +43,7 @@ class Convolution2D:
         # if self.name == 'conv1':
             # print(self.inputs)
             # print(self.weights.shape, self.bias.shape)
-        self.inputs = self.inputs - 128
+        # self.inputs = self.inputs - 128
         WW = floor((W - self.K)/self.s + 1)
         HH = floor((H - self.K)/self.s + 1)
         # if self.name == 'conv1':
@@ -59,6 +59,9 @@ class Convolution2D:
                     #     print(self.weights[f,:,:,:])
                     #     print('sum={}'.format(np.sum(self.inputs[:,w:w+self.K,h:h+self.K]*self.weights[f,:,:,:])))
                     feature_maps[f,w,h]=np.sum(self.inputs[:,w:w+self.K,h:h+self.K]*self.weights[f,:,:,:])+self.bias[f]
+
+        # print(self.name+':')
+        # print(feature_maps)
 
         return feature_maps
 
@@ -137,9 +140,12 @@ class FullyConnected:
     def forward(self, inputs):
         # print("FullyConnected:")
         self.inputs = inputs
-        print(inputs.shape)
-        print(self.weights.shape, self.bias.T.shape, np.dot(self.inputs, self.weights).shape)
-        return np.dot(self.inputs, self.weights) + self.bias.T
+        # print(inputs.shape)
+        # print(self.weights.shape, self.bias.T.shape, np.dot(self.inputs, self.weights).shape)
+        output = np.dot(self.inputs, self.weights) + self.bias.T
+        # print(self.name+':')
+        # print(output)
+        return output
 
     def backward(self, dy):
 
@@ -217,6 +223,8 @@ class Softmax:
     def forward(self, inputs):
         # print("Softmax:")
         # print(inputs.shape)
+        # inputs = inputs - np.max(inputs)
+        # print(inputs)
         exp = np.exp(inputs, dtype=np.float32)
         # print(exp)
         self.out = exp/np.sum(exp)
