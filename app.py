@@ -1,4 +1,4 @@
-from model.network import Net
+from core.network import Net
 from flask import Flask, jsonify, render_template, request
 from preprocessing import *
 

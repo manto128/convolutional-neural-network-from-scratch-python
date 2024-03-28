@@ -1,17 +1,18 @@
 # import numpy as np
 # import pickle 
 # import sys
-from time import *
+# from time import *
 # from model.utils import cross_entropy
-# from model.operators import Operator, Input, Output
+from .kernel_ops import Operator
+from collections import OrderedDict
 
 class Network:
   def __init__(self):
-    self.layers = []
+    self.layers = OrderedDict()
     self.layer_num = 0
 
   def add_op(self, op):
-    self.layers.append(op)
+    self.layers[Operator.op_id] = op
 
   def connect_ops(self, src, dst):
     self.layers[dst].add_input_port()

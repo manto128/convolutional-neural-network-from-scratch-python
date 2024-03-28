@@ -1,12 +1,15 @@
 #!/usr/bin/env python
-
-import numpy as np
+import os
 import sys
-import mnist
+# sys.path.append(os.getcwd() + "/../core/")
+# sys.path.append(os.getcwd() + "/../mnist/")
+import numpy as np
 import pickle
-from model.network import Network
-from model.utils import zero_padding
-from model.operators import *
+from core.network import Network
+from core.utils import zero_padding
+from core.kernel_ops import *
+from core.postprocess_ops import *
+from mnist import *
 
 def test_with_pretrained_weights(model, data, label, test_size, weights_file):
   with open(weights_file, 'rb') as handle:
@@ -87,18 +90,17 @@ def test_with_pretrained_weights(model, data, label, test_size, weights_file):
 
 def build():
   lenet = Network()
-  lr = 0 # learning rate
-  lenet.add_op(Input(name='input'))
-  lenet.add_op(Conv2D(name='conv1', input_channels=1, num_filters=6, kernel_size=5, padding=0, stride=1, learning_rate=lr))
-  lenet.add_op(Maxpool2D(name='maxpool1', pool_size=2, stride=2))
-  lenet.add_op(Conv2D(name='conv2', input_channels=6, num_filters=16, kernel_size=5, padding=0, stride=1, learning_rate=lr))
-  lenet.add_op(Maxpool2D(name='maxpool2', pool_size=2, stride=2))
-  lenet.add_op(Conv2D(name='conv3', input_channels=16, num_filters=120, kernel_size=5, padding=0, stride=1, learning_rate=lr))
-  lenet.add_op(Reshape(name='reshape'))
-  lenet.add_op(FullyConnected(name='fc1', num_inputs=120, num_outputs=84, learning_rate=lr))
-  lenet.add_op(FullyConnected(name='fc2', num_inputs=84, num_outputs=10, learning_rate=lr))
-  lenet.add_op(Softmax(name='softmax'))
-  lenet.add_op(Output(name='output'))
+  lenet.add_op(Input())
+  lenet.add_op(Conv2D())
+  lenet.add_op(Maxpool2D(pool_size=2, stride=2))
+  lenet.add_op(Conv2D())
+  lenet.add_op(Maxpool2D(pool_size=2, stride=2))
+  lenet.add_op(Conv2D())
+  lenet.add_op(Reshape())
+  lenet.add_op(FullyConnected())
+  lenet.add_op(FullyConnected())
+  lenet.add_op(Softmax())
+  lenet.add_op(Output())
   lenet.layer_num = len(lenet.layers)
 
   return lenet
@@ -109,8 +111,8 @@ if __name__=="__main__":
   num_classes = 10
   # train_images = mnist.train_images() #[60000, 28, 28]
   # train_labels = mnist.train_labels()
-  test_images = mnist.test_images()
-  test_labels = mnist.test_labels()
+  test_images = test_images()
+  test_labels = test_labels()
 
   print('Preparing data......')
   # training_data = train_images.reshape(60000, 1, 28, 28)
@@ -130,4 +132,4 @@ if __name__=="__main__":
   # net.test(testing_data, testing_labels, 100)
   model = build()
   print('Testing with pretrained weights......')
-  test_with_pretrained_weights(model, testing_data, testing_labels, 10000, './params.pkl')
+  test_with_pretrained_weights(model, testing_data, testing_labels, 100, './params.pkl')

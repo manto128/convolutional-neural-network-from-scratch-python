@@ -18,7 +18,7 @@ class OutputPort:
   
   def send(self, data):
     for port in range(self.num_ports):
-      if port > 0:
+      if port < (self.num_ports-1):
         self.connected_ports[port].receive(copy.deepcopy(data))
       else:
         self.connected_ports[port].receive(data)
