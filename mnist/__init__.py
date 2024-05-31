@@ -146,7 +146,7 @@ def download_and_parse_mnist_file(fname, target_dir=None, force=False):
         return parse_idx(fd)
 
 
-def train_images():
+def train_images(target_dir=None):
     """Return train images from Yann LeCun MNIST database as a numpy array.
     Download the file, if not already found in the temporary directory of
     the system.
@@ -158,10 +158,10 @@ def train_images():
         dimension indexes each sample, while the other two index rows and
         columns of the image
     """
-    return download_and_parse_mnist_file('train-images-idx3-ubyte.gz')
+    return download_and_parse_mnist_file(fname='train-images-idx3-ubyte.gz', target_dir=target_dir)
 
 
-def test_images():
+def test_images(target_dir=None):
     """Return test images from Yann LeCun MNIST database as a numpy array.
     Download the file, if not already found in the temporary directory of
     the system.
@@ -173,10 +173,10 @@ def test_images():
         dimension indexes each sample, while the other two index rows and
         columns of the image
     """
-    return download_and_parse_mnist_file('t10k-images-idx3-ubyte.gz')
+    return download_and_parse_mnist_file(fname='t10k-images-idx3-ubyte.gz', target_dir=target_dir)
 
 
-def train_labels():
+def train_labels(target_dir=None):
     """Return train labels from Yann LeCun MNIST database as a numpy array.
     Download the file, if not already found in the temporary directory of
     the system.
@@ -186,10 +186,10 @@ def train_labels():
     train_labels : numpy.ndarray
         Numpy array with the labels 0 to 9 in the train MNIST database.
     """
-    return download_and_parse_mnist_file('train-labels-idx1-ubyte.gz')
+    return download_and_parse_mnist_file(fname='train-labels-idx1-ubyte.gz', target_dir=target_dir)
 
 
-def test_labels():
+def test_labels(target_dir=None):
     """Return test labels from Yann LeCun MNIST database as a numpy array.
     Download the file, if not already found in the temporary directory of
     the system.
@@ -199,4 +199,4 @@ def test_labels():
     test_labels : numpy.ndarray
         Numpy array with the labels 0 to 9 in the train MNIST database.
     """
-    return download_and_parse_mnist_file('t10k-labels-idx1-ubyte.gz')
+    return download_and_parse_mnist_file(fname='t10k-labels-idx1-ubyte.gz', target_dir=target_dir)

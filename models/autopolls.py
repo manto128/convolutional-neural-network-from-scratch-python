@@ -1,9 +1,10 @@
 #!/usr/bin/env python
+import os
 import sys
 import numpy as np
 import pickle
+import cv2 as cv
 from core.network import Network
-from core.utils import zero_padding
 from core.kernel_ops import *
 from core.postprocess_ops import *
 
@@ -354,9 +355,57 @@ def build():
   autopolls.connect_ops(156, 157)
   autopolls.add_op(Dequantize())
   autopolls.connect_ops(157, 158)
+  autopolls.add_op(Detection_PostProcess(h_scale=5, 
+                                         max_classes_per_detection=1, 
+                                         max_detections=10, 
+                                         nms_iou_threshold=0.6000000238418579,
+                                         nms_score_threshold=0,
+                                         num_classes=1,
+                                         use_regular_nms=0,
+                                         w_scale=5,
+                                         x_scale=10,
+                                         y_scale=10))
+  autopolls.connect_ops(140, 159)
+  autopolls.connect_ops(158, 159)
+  autopolls.add_op(Quantize())
+  autopolls.connect_ops(159, 160)
+  autopolls.add_op(Quantize())
+  autopolls.connect_ops(159, 161)
+  autopolls.add_op(Quantize())
+  autopolls.connect_ops(159, 162)
+  autopolls.add_op(Quantize())
+  autopolls.connect_ops(159, 163)
+  autopolls.add_op(Quantize())
+  autopolls.connect_ops(162, 164)
+  autopolls.add_op(Quantize())
+  autopolls.connect_ops(160, 165)
+  autopolls.add_op(Quantize())
+  autopolls.connect_ops(163, 166)
+  autopolls.add_op(Quantize())
+  autopolls.connect_ops(161 ,167)
+
+  return autopolls
+
+def extract_metadata(dir):
+  in1 = open(os.path.join(dir, "key"),'rb')
+  fKey = pickle.load(in1)
+  in1.close()
+  return fKey
+
+def test_with_pretrained_weights(model, data):
+  pass
 
 if __name__=="__main__":
   np.set_printoptions(threshold=sys.maxsize)
-  # TODO: Add code to load an image from the autopolls image dataset
-
+  tflite_models_dir = os.path.join(os.getcwd(), "../../pretrained_models")
+  tflite_models_dir.mkdir(exist_ok=True, parents=True)
+  tflite_model_quant_file = os.path.join(tflite_models_dir, "ssd_mobilenetV2_fpnlite_UINT8_AP24.tflite")
+  dataset = "APtest_resized"
+  dataset_dir = os.path.join(os.path.join(os.getcwd(), "../../datasets"), dataset)
+  metadata = extract_metadata(dir=dataset_dir)
   model = build()
+
+  for i in range(len(metadata)):
+    test_image = cv.imread(os.path.join(dataset_dir, (metadata[i]['file_name']).split('/')[-1]))
+    test_image_expanded = np.expand_dims(test_image, axis=0).astype(np.uint8)
+    test_with_pretrained_weights(model, test_image_expanded)

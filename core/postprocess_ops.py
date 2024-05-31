@@ -7,11 +7,17 @@ class Quantize(Operator):
     super().__init__()
 
   def forward(self):
-    self.output_port.send(np.clip(roundupdown(self.input_port[0].data / self.scale + self.zero_point), a_min=-128, a_max=127).astype(np.int8))
+    if self.input_port[0].data.dtype is np.float32:
+      self.output_port.send(np.int8(roundupdown(self.input_port[0].data / self.o_scales + self.o_zero_points)))
+    elif self.input_port[0].data.dtype is np.int8:
+      self.output_port.send(np.uint8(roundupdown((self.input_port[0].data - self.i_zero_points)/ self.o_scales) + self.o_zero_points))
 
-  def feed(self, scale, zero_point):
-    self.scale = scale
-    self.zero_point = zero_point
+  def feed(self, o_scales=None, o_zero_points=None,
+            i_scales=None, i_zero_points=None):
+    self.o_scales = o_scales
+    self.o_zero_points = o_zero_points
+    self.i_scales = i_scales
+    self.i_zero_points = i_zero_points
 
 class Dequantize(Operator):
   def __init__(self):
@@ -25,7 +31,17 @@ class Dequantize(Operator):
     self.zero_point = zero_point
 
 class Detection_PostProcess(Operator):
-  def __init__(self, h_scale, w_scale, x_scale, y_scale, use_regular_nms, num_classes, max_classes_per_detection, max_detections, nms_iou_threshold, nms_score_threshold):
+  def __init__(self, 
+               h_scale,
+               w_scale, 
+               x_scale, 
+               y_scale, 
+               use_regular_nms, 
+               num_classes, 
+               max_classes_per_detection, 
+               max_detections, 
+               nms_iou_threshold, 
+               nms_score_threshold):
     super().__init__()
     self.h_scale = h_scale
     self.w_scale = w_scale
@@ -38,8 +54,11 @@ class Detection_PostProcess(Operator):
     self.nms_iou_threshold = nms_iou_threshold
     self.nms_score_threshold = nms_score_threshold
 
-  def feed(self, scores, anchors):
-    self.scores = scores
+  def feed(self, anchors):
+    """
+    Args:
+    - anchors: Anchor boxes used by the model (shape: [num_anchors, 4]).
+    """
     self.anchors = anchors
 
   def forward(self):
@@ -49,7 +68,7 @@ class Detection_PostProcess(Operator):
     # Decode the bounding boxes
     decoded_boxes = self.decode_boxes(output_boxes, self.anchors)
 
-    # Apply non-maximum suppression
+    # Apply non-max suppression
     selected_boxes, selected_scores = self.non_max_suppression(decoded_boxes[0], output_scores[0])
 
     # print("Selected boxes after NMS:")
@@ -57,34 +76,36 @@ class Detection_PostProcess(Operator):
     # print("Confidence scores for the selected boxes:")
     # print(selected_scores)
 
-  def decode_boxes(self, output_boxes, anchors):
+  def decode_boxes(self, output_boxes):
     """
     Decode the predicted bounding boxes.
     
     Args:
     - output_boxes: Predicted bounding boxes output by the model (shape: [batch_size, num_anchors, 4]).
-    - anchors: Anchor boxes used by the model (shape: [num_anchors, 4]).
     
     Returns:
     - decoded_boxes: Decoded bounding boxes (shape: [batch_size, num_anchors, 4]).
     """
-    boxes_shape = output_boxes.shape
-    batch_size = boxes_shape[0]
-    num_anchors = boxes_shape[1]
+    batch_size = output_boxes.shape[0]
+    num_anchors = output_boxes.shape[1]
 
     decoded_boxes = np.zeros_like(output_boxes)
 
     for batch_idx in range(batch_size):
       for anchor_idx in range(num_anchors):
-        y_center, x_center, h, w = output_boxes[batch_idx, anchor_idx]
-        anchor_y_center, anchor_x_center, anchor_h, anchor_w = anchors[anchor_idx]
+        y, x, h, w = output_boxes[batch_idx, anchor_idx]
+        anchor_y, anchor_x, anchor_h, anchor_w = self.anchors[anchor_idx]
 
-        decoded_y_center = y_center / 255.0 * anchor_h + anchor_y_center
-        decoded_x_center = x_center / 255.0 * anchor_w + anchor_x_center
-        decoded_h = np.exp(h / 255.0) * anchor_h
-        decoded_w = np.exp(w / 255.0) * anchor_w
+        y_center = y / self.y_scale * anchor_h + anchor_y
+        x_center = x / self.x_scale * anchor_w + anchor_x
+        half_h = 0.5*np.exp(h / self.h_scale) * anchor_h
+        half_w = 0.5*np.exp(w / self.w_scale) * anchor_w
+        y_min = y_center - half_h
+        y_max = y_center + half_h
+        x_min = x_center - half_w
+        x_max = x_center + half_h
 
-        decoded_boxes[batch_idx, anchor_idx] = [decoded_y_center, decoded_x_center, decoded_h, decoded_w]
+        decoded_boxes[batch_idx, anchor_idx] = [y_min, x_min, y_max, x_max]
 
     return decoded_boxes
 
@@ -104,13 +125,13 @@ class Detection_PostProcess(Operator):
     if len(boxes) == 0:
         return [], [], []
 
-    num_classes = scores.shape[1]
+    num_classes = scores.shape[2]
     selected_boxes = []
     selected_classes = []
     selected_scores = []
 
     for class_idx in range(num_classes):
-      class_scores = scores[:, class_idx]
+      class_scores = scores[:, :, class_idx]
       class_mask = class_scores > self.nms_score_threshold
 
       class_boxes = boxes[class_mask]
